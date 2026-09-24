@@ -1,14 +1,17 @@
 const Prompt = require('../models/prompts.models')
+const generateTags = require('../Services/ai.service')
 
 // 1. Create a new prompt
 async function createPrompt (req, res){
   try {
     const { title, content, description, isPublic } = req.body;
+    const tags = await generateTags(title, content);
 
     const prompt = await Prompt.create({
       title,
       content,
       description,
+      tags,
       isPublic,
       createdBy: req.user._id,
     });
