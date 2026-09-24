@@ -70,27 +70,45 @@ async function login(req, res) {
 
 //Getting the credentials
 
-async function getme(req,res){
-    if(!token){
-        return res.status(400).json({
-            message: "Unauthorized access"
+async function getme(req, res) {
+    const token = req.cookies?.token
+
+    if (!token) {
+        return res.status(401).json({
+            message: 'Unauthorized access'
         })
     }
-    res.status(200).json({
-        user: {
-            fullname: req.user.fullname,
-            email: req.user.email,
-            id: req.user._id
-        },        
-    })
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_TOKEN)
+        const user = await userModel.findById(decoded.id)
+
+        if (!user) {
+            return res.status(404).json({
+                message: 'User not found'
+            })
+        }
+
+        return res.status(200).json({
+            user: {
+                fullname: user.fullname,
+                email: user.email,
+                id: user._id
+            }
+        })
+    } catch (error) {
+        return res.status(401).json({
+            message: 'Invalid or expired token'
+        })
+    }
 }
 
 //logout
 
-async function logout(req,res){
-    res.clearCookie("token")
-    res.status(200).json({
-        message: "User logged out succussfully"
+async function logout(req, res) {
+    res.clearCookie('token')
+    return res.status(200).json({
+        message: 'User logged out succussfully'
     })
 }
 
