@@ -32,8 +32,18 @@ async function createPrompt (req, res){
 // 2. Get all prompts
 async function getPrompts (req, res){
   try {
-    const prompts = await Prompt.find()
-      .populate("createdBy", "name email")
+
+    const {tags} = req.query;
+    let filter = {}
+
+    if(tags){
+        filter.tags = {
+            $regex: tags,
+            $options: "i"
+        }
+    }
+    const prompts = await Prompt.find(filter)
+      .populate("createdBy", "fullname email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
