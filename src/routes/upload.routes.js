@@ -1,54 +1,54 @@
 const express = require('express')
 const multer = require('multer')
-const path = require('path')
+const sendFiles = require('../config/imagekit')
 const { userAuth } = require('../middlewares/auth.middlewares')
 
 const router = express.Router()
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/users')
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    const ext = path.extname(file.originalname)
-    cb(null, uniqueSuffix + ext)
-  }
-})
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 10 * 1024 * 1024
-  },  
+  },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'application/doc', 'application/msword', 'text/plain']
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true)
-    } else {
-      cb(new Error('Unsupported file type'))
+      return
     }
+
+    cb(new Error('Unsupported file type'))
   }
 })
 
-router.post('/upload', userAuth, upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({
-      message: 'No file uploaded'
+router.post('/upload', userAuth, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: 'No file uploaded'
+      })
+    }
+
+    const result = await sendFiles(req.file.buffer, req.file.originalname)
+
+    return res.status(200).json({
+      message: 'File uploaded successfully',
+      file: {
+        url: result.url,
+        fileId: result.fileId,
+        name: result.name,
+        size: result.size,
+        type: result.type,
+        thumbnailUrl: result.thumbnailUrl
+      }
+    })
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Image upload failed',
+      error: error.message
     })
   }
-
-  return res.status(200).json({
-    message: 'File uploaded successfully',
-    file: {
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      path: req.file.path,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    }
-  })
 })
 
 module.exports = router
